@@ -129,6 +129,11 @@ public class IdleMasterPlugin extends Plugin {
     private Instant lastBoatDamageTime = null;
     private static final int BOAT_ATTACK_TIMEOUT_SECONDS = 10;
     
+    // Idle timer tracking
+    private Instant idleStartTime = null;
+    private WorldPoint lastPlayerPosition = null;
+    private int lastPlayerAnimation = -1;
+    
     // Hide boats draw listener
     private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
 
@@ -583,6 +588,7 @@ public class IdleMasterPlugin extends Plugin {
 
     private void updatePlayerSalvagingStatus(Player player) {
         int animation = player.getAnimation();
+        WorldPoint currentPosition = player.getWorldLocation();
         
         // Check if currently doing salvaging animation
         boolean isSalvaging = (animation == SALVAGING_ANIMATION_1 || animation == SALVAGING_ANIMATION_2 || 
@@ -604,6 +610,32 @@ public class IdleMasterPlugin extends Plugin {
                 salvageInfo.setPlayerSortingSalvage(false);
             }
         }
+        
+        // Update idle timer - player is idle if animation is -1 AND position hasn't changed
+        updateIdleTimer(animation, currentPosition);
+    }
+    
+    private void updateIdleTimer(int currentAnimation, WorldPoint currentPosition) {
+        boolean animationIdle = (currentAnimation == -1);
+        boolean positionChanged = (lastPlayerPosition != null && !currentPosition.equals(lastPlayerPosition));
+        boolean animationChanged = (lastPlayerAnimation != -1 && currentAnimation != -1 && currentAnimation != lastPlayerAnimation);
+        
+        // If player moved or started an animation, reset idle timer
+        if (positionChanged || animationChanged) {
+            idleStartTime = null;
+            salvageInfo.setIdleTimeSeconds(0);
+        } else if (animationIdle && !positionChanged) {
+            // Player is idle (animation -1 and hasn't moved)
+            if (idleStartTime == null) {
+                idleStartTime = Instant.now();
+            }
+            long idleSeconds = Duration.between(idleStartTime, Instant.now()).getSeconds();
+            salvageInfo.setIdleTimeSeconds((int) idleSeconds);
+        }
+        
+        // Update tracking for next tick
+        lastPlayerPosition = currentPosition;
+        lastPlayerAnimation = currentAnimation;
     }
 
     private void updateCrewStatus() {

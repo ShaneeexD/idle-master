@@ -25,6 +25,7 @@ public class SalvageInfo {
         this.boatUnderAttack = other.boatUnderAttack;
         this.monsterAlertText = other.monsterAlertText;
         this.characterName = other.characterName;
+        this.idleTimeSeconds = other.idleTimeSeconds;
     }
     
     // Boat health
@@ -57,6 +58,9 @@ public class SalvageInfo {
     // Character name
     private String characterName = "";
     
+    // Idle timer
+    private int idleTimeSeconds = 0;
+    
     // Getters for display text
     
     public int getBoatHealthPercentage() {
@@ -87,6 +91,18 @@ public class SalvageInfo {
             return "SORTING SALVAGE";
         }
         return playerSalvaging ? "SALVAGING" : "IDLE";
+    }
+    
+    public String getIdleTimeText() {
+        if (idleTimeSeconds <= 0) {
+            return "";
+        }
+        int minutes = idleTimeSeconds / 60;
+        int seconds = idleTimeSeconds % 60;
+        if (minutes > 0) {
+            return String.format(" (%dm %ds)", minutes, seconds);
+        }
+        return String.format(" (%ds)", seconds);
     }
     
     public String getCrewStatusText() {

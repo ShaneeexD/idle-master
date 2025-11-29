@@ -777,7 +777,12 @@ public class FloatingOverlayWindow extends JFrame {
     
     private void updatePlayerStatusDisplay() {
         if (config.showPlayerStatus()) {
-            playerStatusLabel.setText("Player: " + salvageInfo.getPlayerStatusText());
+            String statusText = "Player: " + salvageInfo.getPlayerStatusText();
+            // Add idle timer if player is idle
+            if (!salvageInfo.isPlayerSalvaging() && !salvageInfo.isPlayerSortingSalvage()) {
+                statusText += salvageInfo.getIdleTimeText();
+            }
+            playerStatusLabel.setText(statusText);
             if (salvageInfo.isPlayerSalvaging() || salvageInfo.isPlayerSortingSalvage()) {
                 playerStatusLabel.setForeground(Constants.SALVAGING_COLOR); // Green for both salvaging and sorting
             } else {
