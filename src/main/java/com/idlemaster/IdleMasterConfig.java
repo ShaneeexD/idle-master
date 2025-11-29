@@ -1,7 +1,6 @@
 package com.idlemaster;
 
 import net.runelite.client.config.*;
-import java.awt.Color;
 
 @ConfigGroup("idlemaster")
 public interface IdleMasterConfig extends Config {
@@ -37,47 +36,28 @@ public interface IdleMasterConfig extends Config {
     @ConfigItem(
         keyName = "showBoatHealth",
         name = "Show Boat Health",
-        description = "Display boat health in the overlay.",
+        description = "Display boat health bar in the overlay.",
         section = boatHealthSection,
         position = 1
     )
     default boolean showBoatHealth() { return true; }
 
     @ConfigItem(
-        keyName = "highlightBoatHealthBackground",
-        name = "Highlight when low",
-        description = "Highlight background when boat health is low.",
+        keyName = "lowBoatHealthThreshold",
+        name = "Low health threshold (%)",
+        description = "Play sound when boat health is at or below this percentage.",
         section = boatHealthSection,
         position = 2
     )
-    default boolean highlightBoatHealthBackground() { return false; }
-
-    @ConfigItem(
-        keyName = "lowBoatHealthThreshold",
-        name = "Low health threshold",
-        description = "Highlight when boat health is at or below this percentage.",
-        section = boatHealthSection,
-        position = 3
-    )
     @Range(min = 1, max = 100)
     default int lowBoatHealthThreshold() { return 30; }
-
-    @Alpha
-    @ConfigItem(
-        keyName = "lowBoatHealthColor",
-        name = "Low health color",
-        description = "Background color when boat health is low.",
-        section = boatHealthSection,
-        position = 4
-    )
-    default Color lowBoatHealthColor() { return new Color(255, 50, 50, 180); }
 
     @ConfigItem(
         keyName = "playBoatHealthSound",
         name = "Play sound when low",
         description = "Play a sound when boat health is low.",
         section = boatHealthSection,
-        position = 5
+        position = 3
     )
     default boolean playBoatHealthSound() { return true; }
 
@@ -100,30 +80,11 @@ public interface IdleMasterConfig extends Config {
     default boolean showInventory() { return true; }
 
     @ConfigItem(
-        keyName = "highlightInventoryBackground",
-        name = "Highlight when full",
-        description = "Highlight background when inventory is full.",
-        section = inventorySection,
-        position = 2
-    )
-    default boolean highlightInventoryBackground() { return false; }
-
-    @Alpha
-    @ConfigItem(
-        keyName = "fullInventoryColor",
-        name = "Full inventory color",
-        description = "Background color when inventory is full.",
-        section = inventorySection,
-        position = 3
-    )
-    default Color fullInventoryColor() { return new Color(255, 180, 50, 180); }
-
-    @ConfigItem(
         keyName = "playInventorySound",
         name = "Play sound when full",
         description = "Play a sound when inventory is full.",
         section = inventorySection,
-        position = 4
+        position = 2
     )
     default boolean playInventorySound() { return false; }
 
@@ -146,30 +107,11 @@ public interface IdleMasterConfig extends Config {
     default boolean showCargo() { return true; }
 
     @ConfigItem(
-        keyName = "highlightCargoBackground",
-        name = "Highlight when full",
-        description = "Highlight background when cargo is full.",
-        section = cargoSection,
-        position = 2
-    )
-    default boolean highlightCargoBackground() { return false; }
-
-    @Alpha
-    @ConfigItem(
-        keyName = "fullCargoColor",
-        name = "Full cargo color",
-        description = "Background color when cargo is full.",
-        section = cargoSection,
-        position = 3
-    )
-    default Color fullCargoColor() { return new Color(50, 255, 50, 180); }
-
-    @ConfigItem(
         keyName = "playCargoSound",
         name = "Play sound when full",
         description = "Play a sound when cargo is full.",
         section = cargoSection,
-        position = 4
+        position = 2
     )
     default boolean playCargoSound() { return true; }
 
@@ -192,30 +134,11 @@ public interface IdleMasterConfig extends Config {
     default boolean showPlayerStatus() { return true; }
 
     @ConfigItem(
-        keyName = "highlightPlayerIdleBackground",
-        name = "Highlight when idle",
-        description = "Highlight background when player is not salvaging.",
-        section = playerStatusSection,
-        position = 2
-    )
-    default boolean highlightPlayerIdleBackground() { return false; }
-
-    @Alpha
-    @ConfigItem(
-        keyName = "playerIdleColor",
-        name = "Idle color",
-        description = "Background color when player is idle.",
-        section = playerStatusSection,
-        position = 3
-    )
-    default Color playerIdleColor() { return new Color(255, 200, 100, 180); }
-
-    @ConfigItem(
         keyName = "idleThresholdMs",
         name = "Idle threshold (ms)",
         description = "Time in milliseconds before player is considered idle.",
         section = playerStatusSection,
-        position = 4
+        position = 2
     )
     @Range(min = 500, max = 10000)
     default int idleThresholdMs() { return 1200; }
@@ -225,7 +148,7 @@ public interface IdleMasterConfig extends Config {
         name = "Play sound when idle",
         description = "Play a sound when player stops salvaging.",
         section = playerStatusSection,
-        position = 5
+        position = 3
     )
     default boolean playPlayerIdleSound() { return true; }
 
@@ -234,7 +157,7 @@ public interface IdleMasterConfig extends Config {
         name = "Play sound when sorting done",
         description = "Play a sound when player finishes sorting salvage.",
         section = playerStatusSection,
-        position = 6
+        position = 4
     )
     default boolean playSortingDoneSound() { return true; }
 
@@ -257,30 +180,11 @@ public interface IdleMasterConfig extends Config {
     default boolean showCrewStatus() { return true; }
 
     @ConfigItem(
-        keyName = "highlightCrewIdleBackground",
-        name = "Highlight when crew idle",
-        description = "Highlight background when crew members are not salvaging.",
-        section = crewStatusSection,
-        position = 2
-    )
-    default boolean highlightCrewIdleBackground() { return false; }
-
-    @Alpha
-    @ConfigItem(
-        keyName = "crewIdleColor",
-        name = "Crew idle color",
-        description = "Background color when crew is idle.",
-        section = crewStatusSection,
-        position = 3
-    )
-    default Color crewIdleColor() { return new Color(200, 150, 100, 180); }
-
-    @ConfigItem(
         keyName = "playCrewIdleSound",
         name = "Play sound when crew idle",
         description = "Play a sound when crew stops salvaging.",
         section = crewStatusSection,
-        position = 4
+        position = 2
     )
     default boolean playCrewIdleSound() { return false; }
 
@@ -296,37 +200,18 @@ public interface IdleMasterConfig extends Config {
     @ConfigItem(
         keyName = "showMonsterAlert",
         name = "Show Monster Alert",
-        description = "Display alert when monsters are attacking nearby players.",
+        description = "Display alert when monsters are attacking. Background flashes red.",
         section = monsterAlertSection,
         position = 1
     )
     default boolean showMonsterAlert() { return true; }
 
     @ConfigItem(
-        keyName = "highlightMonsterAlertBackground",
-        name = "Highlight when attacked",
-        description = "Highlight background when monsters are attacking.",
-        section = monsterAlertSection,
-        position = 2
-    )
-    default boolean highlightMonsterAlertBackground() { return false; }
-
-    @Alpha
-    @ConfigItem(
-        keyName = "monsterAlertColor",
-        name = "Monster alert color",
-        description = "Background color when monsters are attacking.",
-        section = monsterAlertSection,
-        position = 3
-    )
-    default Color monsterAlertColor() { return new Color(255, 0, 0, 200); }
-
-    @ConfigItem(
         keyName = "monsterAlertRange",
         name = "Alert range (tiles)",
-        description = "Range in tiles to check for monster attacks on nearby players.",
+        description = "Range in tiles to check for monster attacks.",
         section = monsterAlertSection,
-        position = 4
+        position = 2
     )
     @Range(min = 1, max = 20)
     default int monsterAlertRange() { return 10; }
@@ -336,7 +221,7 @@ public interface IdleMasterConfig extends Config {
         name = "Play sound on attack",
         description = "Play a sound when monsters are attacking.",
         section = monsterAlertSection,
-        position = 5
+        position = 3
     )
     default boolean playMonsterAlertSound() { return true; }
 

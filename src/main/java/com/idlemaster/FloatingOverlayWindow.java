@@ -57,7 +57,7 @@ public class FloatingOverlayWindow extends JFrame {
     private JPanel infoPanel;
     
     // Labels for each info type
-    private JLabel boatHealthLabel;
+    private JPanel boatHealthPanel;
     private JLabel inventoryLabel;
     private JLabel cargoLabel;
     private JLabel playerStatusLabel;
@@ -179,12 +179,67 @@ public class FloatingOverlayWindow extends JFrame {
     }
     
     private void setupLabels() {
-        boatHealthLabel = createLabel("Boat: 100/100", boatIcon);
+        boatHealthPanel = createHealthBarPanel();
         inventoryLabel = createLabel("Inv: 0/28", inventoryIcon);
-        cargoLabel = createLabel("Cargo: 0/60", cargoIcon);
+        cargoLabel = createLabel("Cargo: 0/xx", cargoIcon);
         playerStatusLabel = createLabel("Player: IDLE", playerIcon);
         crewStatusLabel = createLabel("Crew: No Crew", crewIcon);
         monsterAlertLabel = createLabel("Alert: Safe", alertIcon);
+    }
+    
+    private JPanel createHealthBarPanel() {
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                int width = getWidth();
+                int height = getHeight();
+                int barHeight = 16;
+                int barY = (height - barHeight) / 2;
+                int barX = 0;
+                int barWidth = width - 4;
+                
+                // Draw red background (missing health)
+                g2d.setColor(new Color(180, 40, 40));
+                g2d.fillRoundRect(barX, barY, barWidth, barHeight, 4, 4);
+                
+                // Draw green health fill (same size as red when at 100%)
+                int healthPercent = salvageInfo.getBoatHealthPercentage();
+                int fillWidth = (int) (barWidth * (healthPercent / 100.0));
+                
+                g2d.setColor(new Color(40, 180, 40)); // Green
+                g2d.fillRoundRect(barX, barY, fillWidth, barHeight, 4, 4);
+                
+                // Draw border
+                g2d.setColor(new Color(40, 40, 40));
+                g2d.drawRoundRect(barX, barY, barWidth, barHeight, 4, 4);
+                
+                // Draw text in center
+                String text = salvageInfo.getBoatHealth() + "/" + salvageInfo.getMaxBoatHealth();
+                g2d.setFont(new Font("Arial", Font.BOLD, 11));
+                FontMetrics fm = g2d.getFontMetrics();
+                int textWidth = fm.stringWidth(text);
+                int textX = barX + (barWidth - textWidth) / 2;
+                int textY = barY + ((barHeight - fm.getHeight()) / 2) + fm.getAscent();
+                
+                // Text shadow
+                g2d.setColor(Color.BLACK);
+                g2d.drawString(text, textX + 1, textY + 1);
+                
+                // Text
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(text, textX, textY);
+                
+                g2d.dispose();
+            }
+        };
+        panel.setOpaque(false);
+        panel.setPreferredSize(new Dimension(150, 22));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        return panel;
     }
     
     private void setupLayout() {
@@ -192,7 +247,7 @@ public class FloatingOverlayWindow extends JFrame {
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
         
-        addComponentIfVisible(config.showBoatHealth(), boatHealthLabel);
+        addComponentIfVisible(config.showBoatHealth(), boatHealthPanel);
         addComponentIfVisible(config.showInventory(), inventoryLabel);
         addComponentIfVisible(config.showCargo(), cargoLabel);
         addComponentIfVisible(config.showPlayerStatus(), playerStatusLabel);
@@ -536,7 +591,7 @@ public class FloatingOverlayWindow extends JFrame {
         titleBar = createTitleBar();
         contentPanel.add(titleBar, BorderLayout.NORTH);
         
-        boatHealthLabel.setVisible(config.showBoatHealth());
+        boatHealthPanel.setVisible(config.showBoatHealth());
         inventoryLabel.setVisible(config.showInventory());
         cargoLabel.setVisible(config.showCargo());
         playerStatusLabel.setVisible(config.showPlayerStatus());
@@ -551,7 +606,7 @@ public class FloatingOverlayWindow extends JFrame {
         contentPanel.remove(infoPanel);
         infoPanel.removeAll();
         
-        addComponentIfVisible(config.showBoatHealth(), boatHealthLabel);
+        addComponentIfVisible(config.showBoatHealth(), boatHealthPanel);
         addComponentIfVisible(config.showInventory(), inventoryLabel);
         addComponentIfVisible(config.showCargo(), cargoLabel);
         addComponentIfVisible(config.showPlayerStatus(), playerStatusLabel);
@@ -624,44 +679,43 @@ public class FloatingOverlayWindow extends JFrame {
         }
     }
     
+    private static final int ICON_SIZE = 16;
+    
     private void loadIcons() {
-        boatIcon = createPlaceholderIcon(16, 16, Constants.BOAT_HEALTH_COLOR);
-        inventoryIcon = createPlaceholderIcon(16, 16, Constants.INVENTORY_COLOR);
-        cargoIcon = createPlaceholderIcon(16, 16, Constants.CARGO_COLOR);
-        playerIcon = createPlaceholderIcon(16, 16, Constants.SALVAGING_COLOR);
-        crewIcon = createPlaceholderIcon(16, 16, Constants.CREW_COLOR);
-        alertIcon = createPlaceholderIcon(16, 16, Constants.DANGER_COLOR);
+        // Create placeholders first
+        boatIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.BOAT_HEALTH_COLOR);
+        inventoryIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.INVENTORY_COLOR);
+        cargoIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.CARGO_COLOR);
+        playerIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.SALVAGING_COLOR);
+        crewIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.CREW_COLOR);
+        alertIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.DANGER_COLOR);
         
-        // Try to load actual icons
+        // Load actual icons with correct filenames and scale to consistent size
+        inventoryIcon = loadAndScaleIcon("/com/idlemaster/icons/Inventory.png", inventoryIcon);
+        cargoIcon = loadAndScaleIcon("/com/idlemaster/icons/cargo.png", cargoIcon);
+        playerIcon = loadAndScaleIcon("/com/idlemaster/icons/player.png", playerIcon);
+        crewIcon = loadAndScaleIcon("/com/idlemaster/icons/crew.png", crewIcon);
+        alertIcon = loadAndScaleIcon("/com/idlemaster/icons/alert.png", alertIcon);
+    }
+    
+    private BufferedImage loadAndScaleIcon(String path, BufferedImage fallback) {
         try {
-            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), "/com/idlemaster/icons/boat.png");
-            if (loaded != null) boatIcon = loaded;
-        } catch (Exception e) { /* Use placeholder */ }
-        
-        try {
-            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), "/com/idlemaster/icons/inventory.png");
-            if (loaded != null) inventoryIcon = loaded;
-        } catch (Exception e) { /* Use placeholder */ }
-        
-        try {
-            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), "/com/idlemaster/icons/cargo.png");
-            if (loaded != null) cargoIcon = loaded;
-        } catch (Exception e) { /* Use placeholder */ }
-        
-        try {
-            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), "/com/idlemaster/icons/player.png");
-            if (loaded != null) playerIcon = loaded;
-        } catch (Exception e) { /* Use placeholder */ }
-        
-        try {
-            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), "/com/idlemaster/icons/crew.png");
-            if (loaded != null) crewIcon = loaded;
-        } catch (Exception e) { /* Use placeholder */ }
-        
-        try {
-            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), "/com/idlemaster/icons/alert.png");
-            if (loaded != null) alertIcon = loaded;
-        } catch (Exception e) { /* Use placeholder */ }
+            BufferedImage loaded = ImageUtil.loadImageResource(getClass(), path);
+            if (loaded != null) {
+                // Scale to consistent size
+                if (loaded.getWidth() != ICON_SIZE || loaded.getHeight() != ICON_SIZE) {
+                    BufferedImage scaled = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+                    Graphics2D g2d = scaled.createGraphics();
+                    g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2d.drawImage(loaded, 0, 0, ICON_SIZE, ICON_SIZE, null);
+                    g2d.dispose();
+                    return scaled;
+                }
+                return loaded;
+            }
+        } catch (Exception e) { /* Use fallback */ }
+        return fallback;
     }
     
     private BufferedImage createPlaceholderIcon(int width, int height, Color color) {
@@ -688,15 +742,8 @@ public class FloatingOverlayWindow extends JFrame {
     
     private void updateBoatHealthDisplay() {
         if (config.showBoatHealth()) {
-            boatHealthLabel.setText("Boat: " + salvageInfo.getBoatHealthText());
-            int healthPercent = salvageInfo.getBoatHealthPercentage();
-            if (healthPercent <= 20) {
-                boatHealthLabel.setForeground(Constants.DANGER_COLOR);
-            } else if (healthPercent <= 50) {
-                boatHealthLabel.setForeground(Constants.WARNING_COLOR);
-            } else {
-                boatHealthLabel.setForeground(Constants.BOAT_HEALTH_COLOR);
-            }
+            // The health bar panel repaints itself with current salvageInfo values
+            boatHealthPanel.repaint();
         }
     }
     

@@ -124,8 +124,10 @@ public class IdleMasterPlugin extends Plugin {
     private int cargoCount = 0;
     private int maxCargoCapacity = 0;
     
-    // Track previous boat health to detect damage (monster attack)
+    // Track previous boat health to detect damage (boat under attack)
     private int previousBoatHealth = -1;
+    private Instant lastBoatDamageTime = null;
+    private static final int BOAT_ATTACK_TIMEOUT_SECONDS = 10;
     
     // Hide boats draw listener
     private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
@@ -497,6 +499,24 @@ public class IdleMasterPlugin extends Plugin {
                 if (parts.length == 2) {
                     int health = Integer.parseInt(parts[0].trim());
                     int maxHealth = Integer.parseInt(parts[1].trim());
+                    
+                    // Check if boat took damage (HP decreased)
+                    if (previousBoatHealth > 0 && health < previousBoatHealth) {
+                        lastBoatDamageTime = Instant.now();
+                        salvageInfo.setBoatUnderAttack(true);
+                        salvageInfo.setMonsterAlertText("UNDER ATTACK!");
+                    }
+                    
+                    // Check if attack timeout has passed (10 seconds without damage)
+                    if (lastBoatDamageTime != null) {
+                        long secondsSinceDamage = Duration.between(lastBoatDamageTime, Instant.now()).getSeconds();
+                        if (secondsSinceDamage >= BOAT_ATTACK_TIMEOUT_SECONDS) {
+                            salvageInfo.setBoatUnderAttack(false);
+                            lastBoatDamageTime = null;
+                        }
+                    }
+                    
+                    previousBoatHealth = health;
                     salvageInfo.setBoatHealth(health);
                     salvageInfo.setMaxBoatHealth(maxHealth);
                 }

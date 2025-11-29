@@ -22,6 +22,8 @@ public class SalvageInfo {
         this.crewSalvaging = other.crewSalvaging;
         this.crewCount = other.crewCount;
         this.monsterAttacking = other.monsterAttacking;
+        this.boatUnderAttack = other.boatUnderAttack;
+        this.monsterAlertText = other.monsterAlertText;
         this.characterName = other.characterName;
     }
     
@@ -47,6 +49,10 @@ public class SalvageInfo {
     // Monster alert
     private boolean monsterAttacking = false;
     private String monsterName = "";
+    
+    // Boat under attack (HP decreasing)
+    private boolean boatUnderAttack = false;
+    private String monsterAlertText = "Safe";
     
     // Character name
     private String characterName = "";
@@ -90,10 +96,19 @@ public class SalvageInfo {
         return String.format("%d/%d Active", crewActivelySalvaging, crewCount);
     }
     
+    // Override Lombok getter to use custom logic
     public String getMonsterAlertText() {
+        if (boatUnderAttack) {
+            return monsterAlertText;
+        }
         if (monsterAttacking) {
             return monsterName.isEmpty() ? "UNDER ATTACK!" : monsterName + " ATTACKING!";
         }
         return "Safe";
+    }
+    
+    // Check if any attack is happening (monster or boat damage)
+    public boolean isMonsterAttacking() {
+        return monsterAttacking || boatUnderAttack;
     }
 }
