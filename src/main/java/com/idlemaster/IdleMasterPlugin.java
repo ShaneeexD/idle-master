@@ -457,20 +457,48 @@ public class IdleMasterPlugin extends Plugin {
     }
 
     private void updateBoatHealth() {
-        // Read boat health from widget ID 61407235 (text format: "190/190")
+        // Read boat health from widget - the text is in a child widget
+        // Widget 61407235 is the container, we need to find the child with text
         try {
             Widget healthWidget = client.getWidget(BOAT_HEALTH_WIDGET_ID);
             
-            if (healthWidget != null && !healthWidget.isHidden() && healthWidget.getText() != null) {
-                String text = healthWidget.getText();
-                if (text.contains("/")) {
-                    String[] parts = text.split("/");
-                    if (parts.length == 2) {
-                        int health = Integer.parseInt(parts[0].trim());
-                        int maxHealth = Integer.parseInt(parts[1].trim());
-                        salvageInfo.setBoatHealth(health);
-                        salvageInfo.setMaxBoatHealth(maxHealth);
+            if (healthWidget == null) {
+                return;
+            }
+            
+            // The text might be in a child widget, not the parent
+            String text = healthWidget.getText();
+            
+            // If parent has no text, check children
+            if (text == null || text.isEmpty()) {
+                Widget[] children = healthWidget.getChildren();
+                if (children != null) {
+                    for (Widget child : children) {
+                        if (child != null && child.getText() != null && child.getText().contains("/")) {
+                            text = child.getText();
+                            break;
+                        }
                     }
+                }
+                
+                // Also check dynamic children
+                if ((text == null || text.isEmpty()) && healthWidget.getDynamicChildren() != null) {
+                    for (Widget child : healthWidget.getDynamicChildren()) {
+                        if (child != null && child.getText() != null && child.getText().contains("/")) {
+                            text = child.getText();
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (text != null && text.contains("/")) {
+                String[] parts = text.split("/");
+                if (parts.length == 2) {
+                    int health = Integer.parseInt(parts[0].trim());
+                    int maxHealth = Integer.parseInt(parts[1].trim());
+                    salvageInfo.setBoatHealth(health);
+                    salvageInfo.setMaxBoatHealth(maxHealth);
                 }
             }
         } catch (Exception e) {
