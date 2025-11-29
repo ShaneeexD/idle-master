@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
@@ -79,6 +80,9 @@ public class IdleMasterPlugin extends Plugin {
     // Crew overhead text when they store salvage
     private static final String CREW_SALVAGE_OVERHEAD = "Managed to hook some salvage! I'll put it in the cargo hold.";
     
+    // Chat message when sorting salvage is complete
+    private static final String SORTING_DONE_MESSAGE = "You have no more salvage to sort.";
+    
     // Sound effect ID for alerts
     private static final int SOUND_ID = 3817;
 
@@ -113,7 +117,6 @@ public class IdleMasterPlugin extends Plugin {
     private boolean alertedInventoryFull = false;
     private boolean alertedCargoFull = false;
     private boolean alertedPlayerIdle = false;
-    private boolean alertedPlayerSortingDone = false;
     private boolean alertedCrewIdle = false;
     private boolean alertedMonsterAttack = false;
     
@@ -278,6 +281,24 @@ public class IdleMasterPlugin extends Plugin {
                 cargoCount++;
                 salvageInfo.setCargoCount(cargoCount);
                 log.debug("Crew {} stored salvage (overhead), cargo now: {}", npcName, cargoCount);
+            }
+        }
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage event) {
+        // Check for sorting salvage complete message
+        if (event.getType() == ChatMessageType.SPAM || event.getType() == ChatMessageType.GAMEMESSAGE) {
+            String message = event.getMessage();
+            if (message != null && message.equals(SORTING_DONE_MESSAGE)) {
+                // Player finished sorting salvage - play alert sound
+                if (config.playSortingDoneSound()) {
+                    playSoundEffect();
+                }
+                // Update player status to idle
+                salvageInfo.setPlayerSortingSalvage(false);
+                salvageInfo.setPlayerSalvaging(false);
+                log.debug("Sorting salvage complete");
             }
         }
     }
@@ -514,10 +535,10 @@ public class IdleMasterPlugin extends Plugin {
     private void updateCrewStatus() {
         // Check for crew NPCs on the boat and their animation states
         // Only track NPCs on our own boat (same WorldView as player)
+        // Note: Crew can only salvage, not sort salvage
         try {
             int crewCount = 0;
             int activeCrew = 0;
-            int sortingCrew = 0;
             
             Player player = client.getLocalPlayer();
             if (player == null) {
@@ -539,13 +560,11 @@ public class IdleMasterPlugin extends Plugin {
                 if (npcName != null && isCrewMember(npcName)) {
                     crewCount++;
                     
-                    // Check if crew is actively salvaging or sorting
+                    // Check if crew is actively salvaging
                     int npcAnimation = npc.getAnimation();
                     if (npcAnimation == SALVAGING_ANIMATION_1 || npcAnimation == SALVAGING_ANIMATION_2 || 
                         npcAnimation == SALVAGING_ANIMATION_3) {
                         activeCrew++;
-                    } else if (npcAnimation == SORTING_SALVAGE_ANIMATION) {
-                        sortingCrew++;
                     }
                 }
             }
@@ -553,8 +572,6 @@ public class IdleMasterPlugin extends Plugin {
             salvageInfo.setCrewCount(crewCount);
             salvageInfo.setCrewActivelySalvaging(activeCrew);
             salvageInfo.setCrewSalvaging(activeCrew > 0);
-            salvageInfo.setCrewSortingSalvageCount(sortingCrew);
-            salvageInfo.setCrewSortingSalvage(sortingCrew > 0);
         } catch (Exception e) {
             log.debug("Error checking crew status: {}", e.getMessage());
         }
@@ -671,34 +688,16 @@ public class IdleMasterPlugin extends Plugin {
             alertedCargoFull = false; // Reset when cargo has space
         }
 
-        // Check player idle - only alert once when player becomes idle (not sorting)
+        // Check player idle - only alert once when player becomes idle
+        // Don't alert while sorting (sorting done is handled via chat message)
         boolean playerIdle = !salvageInfo.isPlayerSalvaging() && !salvageInfo.isPlayerSortingSalvage();
         boolean playerSorting = salvageInfo.isPlayerSortingSalvage();
         
-        if (config.playPlayerIdleSound() && playerIdle && !alertedPlayerIdle && !alertedPlayerSortingDone) {
+        if (config.playPlayerIdleSound() && playerIdle && !alertedPlayerIdle && !playerSorting) {
             shouldPlaySound = true;
             alertedPlayerIdle = true;
-        } else if (!playerIdle && !playerSorting) {
-            alertedPlayerIdle = false; // Reset when player starts salvaging
-        }
-        
-        // Check player sorting done - alert when sorting finishes (becomes idle after sorting)
-        if (config.playPlayerIdleSound() && playerIdle && alertedPlayerSortingDone) {
-            // Already alerted for sorting done, don't double alert
-        } else if (playerSorting && !alertedPlayerSortingDone) {
-            // Player is sorting - prepare to alert when done
-            alertedPlayerSortingDone = false;
-            alertedPlayerIdle = true; // Prevent idle alert while sorting
-        } else if (!playerSorting && !playerIdle && salvageInfo.isPlayerSalvaging()) {
-            alertedPlayerSortingDone = false; // Reset when player goes back to salvaging
-        }
-        
-        // Detect transition from sorting to idle
-        if (previousSalvageInfo != null && previousSalvageInfo.isPlayerSortingSalvage() && !playerSorting && playerIdle) {
-            if (!alertedPlayerSortingDone) {
-                shouldPlaySound = true;
-                alertedPlayerSortingDone = true;
-            }
+        } else if (!playerIdle) {
+            alertedPlayerIdle = false; // Reset when player starts salvaging or sorting
         }
 
         // Check crew idle - only alert once when crew becomes idle
@@ -720,12 +719,16 @@ public class IdleMasterPlugin extends Plugin {
         }
 
         if (shouldPlaySound) {
-            Preferences preferences = client.getPreferences();
-            int previousVolume = preferences.getSoundEffectVolume();
-            preferences.setSoundEffectVolume(config.soundVolume());
-            client.playSoundEffect(SOUND_ID, config.soundVolume());
-            preferences.setSoundEffectVolume(previousVolume);
+            playSoundEffect();
         }
+    }
+    
+    private void playSoundEffect() {
+        Preferences preferences = client.getPreferences();
+        int previousVolume = preferences.getSoundEffectVolume();
+        preferences.setSoundEffectVolume(config.soundVolume());
+        client.playSoundEffect(SOUND_ID, config.soundVolume());
+        preferences.setSoundEffectVolume(previousVolume);
     }
 
     @Provides

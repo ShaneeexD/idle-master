@@ -731,8 +731,8 @@ public class FloatingOverlayWindow extends JFrame {
     private void updatePlayerStatusDisplay() {
         if (config.showPlayerStatus()) {
             playerStatusLabel.setText("Player: " + salvageInfo.getPlayerStatusText());
-            if (salvageInfo.isPlayerSalvaging()) {
-                playerStatusLabel.setForeground(Constants.SALVAGING_COLOR);
+            if (salvageInfo.isPlayerSalvaging() || salvageInfo.isPlayerSortingSalvage()) {
+                playerStatusLabel.setForeground(Constants.SALVAGING_COLOR); // Green for both salvaging and sorting
             } else {
                 playerStatusLabel.setForeground(Constants.IDLE_COLOR);
             }

@@ -229,6 +229,15 @@ public interface IdleMasterConfig extends Config {
     )
     default boolean playPlayerIdleSound() { return true; }
 
+    @ConfigItem(
+        keyName = "playSortingDoneSound",
+        name = "Play sound when sorting done",
+        description = "Play a sound when player finishes sorting salvage.",
+        section = playerStatusSection,
+        position = 6
+    )
+    default boolean playSortingDoneSound() { return true; }
+
     // --- Crew Status Section ---
     @ConfigSection(
         name = "Sailing - Crew Status",
