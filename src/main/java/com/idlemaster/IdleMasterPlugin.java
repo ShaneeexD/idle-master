@@ -68,7 +68,7 @@ public class IdleMasterPlugin extends Plugin {
     );
     
     // Monster NPC IDs that attack during salvaging
-    private static final Set<Integer> SALVAGE_MONSTER_IDS = Set.of(15210, 15196);
+    private static final Set<Integer> SALVAGE_MONSTER_IDS = Set.of(15210, 15196, 15207, 15206, 15208, 15209, 15212, 15200, 15201, 15198, 15199);
     
     // Widget IDs for boat info (from widget inspector)
     // Boat health widget ID: 61407235 (group 937, child 3)
@@ -135,9 +135,27 @@ public class IdleMasterPlugin extends Plugin {
         log.info("Idle Master plugin started!");
         
         salvageInfo = new SalvageInfo();
+        loadCargoCount(); // Load saved cargo count
         createAndShowWindow();
         overlayManager.add(overlay);
         hooks.registerRenderableDrawListener(drawListener);
+    }
+    
+    private void loadCargoCount() {
+        String saved = configManager.getConfiguration("idlemaster", "savedCargoCount");
+        if (saved != null) {
+            try {
+                cargoCount = Integer.parseInt(saved);
+                salvageInfo.setCargoCount(cargoCount);
+                log.debug("Loaded saved cargo count: {}", cargoCount);
+            } catch (NumberFormatException e) {
+                cargoCount = 0;
+            }
+        }
+    }
+    
+    private void saveCargoCount() {
+        configManager.setConfiguration("idlemaster", "savedCargoCount", String.valueOf(cargoCount));
     }
 
     private void createAndShowWindow() {
@@ -280,6 +298,7 @@ public class IdleMasterPlugin extends Plugin {
                 // Crew member stored salvage - increment cargo count
                 cargoCount++;
                 salvageInfo.setCargoCount(cargoCount);
+                saveCargoCount();
                 log.debug("Crew {} stored salvage (overhead), cargo now: {}", npcName, cargoCount);
             }
         }
@@ -482,6 +501,8 @@ public class IdleMasterPlugin extends Plugin {
     private void updateCargoCount() {
         // Read cargo from widgets (same approach as boat health)
         try {
+            int previousCargoCount = cargoCount;
+            
             // Read occupied slots from widget
             Widget occupiedWidget = client.getWidget(CARGO_OCCUPIED_WIDGET_ID);
             if (occupiedWidget != null && !occupiedWidget.isHidden() && occupiedWidget.getText() != null) {
@@ -502,6 +523,11 @@ public class IdleMasterPlugin extends Plugin {
             
             salvageInfo.setCargoCount(cargoCount);
             salvageInfo.setMaxCargoCount(maxCargoCapacity > 0 ? maxCargoCapacity : 60);
+            
+            // Save if cargo count changed
+            if (cargoCount != previousCargoCount) {
+                saveCargoCount();
+            }
         } catch (Exception e) {
             log.debug("Error reading cargo: {}", e.getMessage());
         }
