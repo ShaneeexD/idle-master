@@ -18,7 +18,9 @@ public class SalvageInfo {
         this.cargoCount = other.cargoCount;
         this.maxCargoCount = other.maxCargoCount;
         this.playerSalvaging = other.playerSalvaging;
+        this.playerSortingSalvage = other.playerSortingSalvage;
         this.crewSalvaging = other.crewSalvaging;
+        this.crewSortingSalvage = other.crewSortingSalvage;
         this.crewCount = other.crewCount;
         this.monsterAttacking = other.monsterAttacking;
         this.characterName = other.characterName;
@@ -38,9 +40,12 @@ public class SalvageInfo {
     
     // Animation states
     private boolean playerSalvaging = false;
+    private boolean playerSortingSalvage = false;
     private boolean crewSalvaging = false;
+    private boolean crewSortingSalvage = false;
     private int crewCount = 0;
     private int crewActivelySalvaging = 0;
+    private int crewSortingSalvageCount = 0;
     
     // Monster alert
     private boolean monsterAttacking = false;
@@ -75,12 +80,18 @@ public class SalvageInfo {
     }
     
     public String getPlayerStatusText() {
+        if (playerSortingSalvage) {
+            return "SORTING SALVAGE";
+        }
         return playerSalvaging ? "SALVAGING" : "IDLE";
     }
     
     public String getCrewStatusText() {
         if (crewCount == 0) {
             return "No Crew";
+        }
+        if (crewSortingSalvageCount > 0) {
+            return String.format("%d/%d Sorting", crewSortingSalvageCount, crewCount);
         }
         return String.format("%d/%d Active", crewActivelySalvaging, crewCount);
     }

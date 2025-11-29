@@ -42,6 +42,7 @@ public class IdleMasterPlugin extends Plugin {
     private static final int SALVAGING_ANIMATION_1 = 13576;
     private static final int SALVAGING_ANIMATION_2 = 13577;
     private static final int SALVAGING_ANIMATION_3 = 13584;
+    private static final int SORTING_SALVAGE_ANIMATION = 13599;
     
     // Shipwreck IDs - Salvageable (Active)
     private static final Set<Integer> SHIPWRECK_SALVAGEABLE_IDS = Set.of(
@@ -112,6 +113,7 @@ public class IdleMasterPlugin extends Plugin {
     private boolean alertedInventoryFull = false;
     private boolean alertedCargoFull = false;
     private boolean alertedPlayerIdle = false;
+    private boolean alertedPlayerSortingDone = false;
     private boolean alertedCrewIdle = false;
     private boolean alertedMonsterAttack = false;
     
@@ -488,16 +490,24 @@ public class IdleMasterPlugin extends Plugin {
         int animation = player.getAnimation();
         
         // Check if currently doing salvaging animation
-        boolean isSalvaging = (animation == SALVAGING_ANIMATION_1 || animation == SALVAGING_ANIMATION_2 || animation == SALVAGING_ANIMATION_3);
+        boolean isSalvaging = (animation == SALVAGING_ANIMATION_1 || animation == SALVAGING_ANIMATION_2 || 
+                               animation == SALVAGING_ANIMATION_3);
+        boolean isSortingSalvage = (animation == SORTING_SALVAGE_ANIMATION);
         
         Instant now = Instant.now();
-        if (isSalvaging) {
+        if (isSalvaging || isSortingSalvage) {
             lastActive = now;
-            salvageInfo.setPlayerSalvaging(true);
+            salvageInfo.setPlayerSalvaging(isSalvaging);
+            salvageInfo.setPlayerSortingSalvage(isSortingSalvage);
         } else {
             long millisSinceActive = Duration.between(lastActive, now).toMillis();
             int idleThreshold = config.idleThresholdMs();
-            salvageInfo.setPlayerSalvaging(millisSinceActive < idleThreshold);
+            boolean stillActive = millisSinceActive < idleThreshold;
+            salvageInfo.setPlayerSalvaging(stillActive && !salvageInfo.isPlayerSortingSalvage());
+            salvageInfo.setPlayerSortingSalvage(stillActive && salvageInfo.isPlayerSortingSalvage());
+            if (!stillActive) {
+                salvageInfo.setPlayerSortingSalvage(false);
+            }
         }
     }
 
@@ -507,6 +517,7 @@ public class IdleMasterPlugin extends Plugin {
         try {
             int crewCount = 0;
             int activeCrew = 0;
+            int sortingCrew = 0;
             
             Player player = client.getLocalPlayer();
             if (player == null) {
@@ -528,10 +539,13 @@ public class IdleMasterPlugin extends Plugin {
                 if (npcName != null && isCrewMember(npcName)) {
                     crewCount++;
                     
-                    // Check if crew is actively salvaging
+                    // Check if crew is actively salvaging or sorting
                     int npcAnimation = npc.getAnimation();
-                    if (npcAnimation == SALVAGING_ANIMATION_1 || npcAnimation == SALVAGING_ANIMATION_2 || npcAnimation == SALVAGING_ANIMATION_3) {
+                    if (npcAnimation == SALVAGING_ANIMATION_1 || npcAnimation == SALVAGING_ANIMATION_2 || 
+                        npcAnimation == SALVAGING_ANIMATION_3) {
                         activeCrew++;
+                    } else if (npcAnimation == SORTING_SALVAGE_ANIMATION) {
+                        sortingCrew++;
                     }
                 }
             }
@@ -539,6 +553,8 @@ public class IdleMasterPlugin extends Plugin {
             salvageInfo.setCrewCount(crewCount);
             salvageInfo.setCrewActivelySalvaging(activeCrew);
             salvageInfo.setCrewSalvaging(activeCrew > 0);
+            salvageInfo.setCrewSortingSalvageCount(sortingCrew);
+            salvageInfo.setCrewSortingSalvage(sortingCrew > 0);
         } catch (Exception e) {
             log.debug("Error checking crew status: {}", e.getMessage());
         }
@@ -580,29 +596,31 @@ public class IdleMasterPlugin extends Plugin {
             previousBoatHealth = currentHealth;
             
             // Method 2: Check for specific salvage monster NPCs in range
+            // Monsters are on the TOP LEVEL world view (the sea), not on our boat
             if (!monsterAttacking) {
                 WorldPoint boatLocation = getPlayerBoatLocation();
-                if (boatLocation != null) {
+                if (boatLocation != null && client.getTopLevelWorldView() != null) {
                     int alertRange = config.monsterAlertRange();
                     
-                    Player localPlayer = client.getLocalPlayer();
-                    if (localPlayer != null) {
-                        WorldView playerWorldView = localPlayer.getWorldView();
-                        if (playerWorldView != null) {
-                            for (NPC npc : playerWorldView.npcs()) {
-                                if (npc == null) continue;
+                    // Check NPCs on the top level world view (where monsters spawn)
+                    for (NPC npc : client.getTopLevelWorldView().npcs()) {
+                        if (npc == null) continue;
+                        
+                        int npcId = npc.getId();
+                        if (SALVAGE_MONSTER_IDS.contains(npcId)) {
+                            WorldPoint npcLocation = npc.getWorldLocation();
+                            if (npcLocation != null && npcLocation.getPlane() == boatLocation.getPlane()) {
+                                // Use same distance calculation as salvage range
+                                int minX = boatLocation.getX() - alertRange;
+                                int maxX = boatLocation.getX() + alertRange;
+                                int minY = boatLocation.getY() - alertRange;
+                                int maxY = boatLocation.getY() + alertRange;
                                 
-                                int npcId = npc.getId();
-                                if (SALVAGE_MONSTER_IDS.contains(npcId)) {
-                                    WorldPoint npcLocation = npc.getWorldLocation();
-                                    if (npcLocation != null) {
-                                        int distance = boatLocation.distanceTo(npcLocation);
-                                        if (distance <= alertRange) {
-                                            monsterAttacking = true;
-                                            monsterName = npc.getName() != null ? npc.getName() : "Monster";
-                                            break;
-                                        }
-                                    }
+                                if (npcLocation.getX() >= minX && npcLocation.getX() <= maxX &&
+                                    npcLocation.getY() >= minY && npcLocation.getY() <= maxY) {
+                                    monsterAttacking = true;
+                                    monsterName = npc.getName() != null ? npc.getName() : "Monster";
+                                    break;
                                 }
                             }
                         }
@@ -653,13 +671,34 @@ public class IdleMasterPlugin extends Plugin {
             alertedCargoFull = false; // Reset when cargo has space
         }
 
-        // Check player idle - only alert once when player becomes idle
-        boolean playerIdle = !salvageInfo.isPlayerSalvaging();
-        if (config.playPlayerIdleSound() && playerIdle && !alertedPlayerIdle) {
+        // Check player idle - only alert once when player becomes idle (not sorting)
+        boolean playerIdle = !salvageInfo.isPlayerSalvaging() && !salvageInfo.isPlayerSortingSalvage();
+        boolean playerSorting = salvageInfo.isPlayerSortingSalvage();
+        
+        if (config.playPlayerIdleSound() && playerIdle && !alertedPlayerIdle && !alertedPlayerSortingDone) {
             shouldPlaySound = true;
             alertedPlayerIdle = true;
-        } else if (!playerIdle) {
+        } else if (!playerIdle && !playerSorting) {
             alertedPlayerIdle = false; // Reset when player starts salvaging
+        }
+        
+        // Check player sorting done - alert when sorting finishes (becomes idle after sorting)
+        if (config.playPlayerIdleSound() && playerIdle && alertedPlayerSortingDone) {
+            // Already alerted for sorting done, don't double alert
+        } else if (playerSorting && !alertedPlayerSortingDone) {
+            // Player is sorting - prepare to alert when done
+            alertedPlayerSortingDone = false;
+            alertedPlayerIdle = true; // Prevent idle alert while sorting
+        } else if (!playerSorting && !playerIdle && salvageInfo.isPlayerSalvaging()) {
+            alertedPlayerSortingDone = false; // Reset when player goes back to salvaging
+        }
+        
+        // Detect transition from sorting to idle
+        if (previousSalvageInfo != null && previousSalvageInfo.isPlayerSortingSalvage() && !playerSorting && playerIdle) {
+            if (!alertedPlayerSortingDone) {
+                shouldPlaySound = true;
+                alertedPlayerSortingDone = true;
+            }
         }
 
         // Check crew idle - only alert once when crew becomes idle

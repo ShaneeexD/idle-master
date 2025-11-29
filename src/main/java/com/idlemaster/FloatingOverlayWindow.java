@@ -81,6 +81,10 @@ public class FloatingOverlayWindow extends JFrame {
     private boolean isDragging = false;
     private boolean isResizing = false;
     private int resizeEdge = 0;
+    
+    // Monster alert flash state
+    private Timer flashTimer;
+    private boolean flashState = false;
 
     public FloatingOverlayWindow(SalvageInfo salvageInfo, IdleMasterConfig config, ConfigManager configManager) {
         this.salvageInfo = salvageInfo;
@@ -147,8 +151,31 @@ public class FloatingOverlayWindow extends JFrame {
     }
     
     private Color getBackgroundColor() {
-        // Always return black background with configured opacity
+        // Flash red when monster is attacking
+        if (salvageInfo.isMonsterAttacking() && flashState) {
+            return new Color(150, 30, 30, config.opacity()); // Dark red flash
+        }
+        // Default black background with configured opacity
         return new Color(0, 0, 0, config.opacity());
+    }
+    
+    private void startFlashTimer() {
+        if (flashTimer == null) {
+            flashTimer = new Timer(500, e -> {
+                flashState = !flashState;
+                contentPanel.repaint();
+            });
+            flashTimer.start();
+        }
+    }
+    
+    private void stopFlashTimer() {
+        if (flashTimer != null) {
+            flashTimer.stop();
+            flashTimer = null;
+            flashState = false;
+            contentPanel.repaint();
+        }
     }
     
     private void setupLabels() {
@@ -730,8 +757,10 @@ public class FloatingOverlayWindow extends JFrame {
             monsterAlertLabel.setText("Alert: " + salvageInfo.getMonsterAlertText());
             if (salvageInfo.isMonsterAttacking()) {
                 monsterAlertLabel.setForeground(Constants.DANGER_COLOR);
+                startFlashTimer(); // Start flashing background
             } else {
                 monsterAlertLabel.setForeground(Constants.SAFE_COLOR);
+                stopFlashTimer(); // Stop flashing when safe
             }
         }
     }
