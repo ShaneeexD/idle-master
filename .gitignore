@@ -1,9 +1,21 @@
+# Build
 .gradle
 build
-.idea/
+
+# IDE - Eclipse
+.classpath
 .project
 .settings/
-.classpath
-nbactions.xml
+
+# IDE - IntelliJ
+.idea/
+
+# IDE - NetBeans
 nb-configuration.xml
+nbactions.xml
 nbproject/
+
+# Reference plugins
+AFK-overlay-master
+sailing-main
+salvaging-plugin

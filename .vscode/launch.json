@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "ExamplePluginTest",
+            "request": "launch",
+            "mainClass": "com.example.ExamplePluginTest",
+            "projectName": "Idle-Master",
+            "vmArgs": "-ea",
+            "args": "--developer-mode"
+        },
+        {
+            "type": "java",
+            "name": "Run Idle Master Plugin",
+            "request": "launch",
+            "mainClass": "com.example.ExamplePluginTest",
+            "projectName": "idle-master",
+            "vmArgs": "-ea",
+            "args": "--developer-mode"
+        }
+    ]
+}
