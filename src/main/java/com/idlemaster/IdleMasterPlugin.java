@@ -83,6 +83,9 @@ public class IdleMasterPlugin extends Plugin {
     // Chat message when sorting salvage is complete
     private static final String SORTING_DONE_MESSAGE = "You have no more salvage to sort.";
     
+    // Chat message when shipwreck is depleted
+    private static final String SHIPWRECK_DEPLETED_MESSAGE = "You salvage all you can from the shipwreck before it is reclaimed by the sea.";
+    
     // Sound effect ID for alerts
     private static final int SOUND_ID = 3817;
 
@@ -327,10 +330,14 @@ public class IdleMasterPlugin extends Plugin {
 
     @Subscribe
     public void onChatMessage(ChatMessage event) {
-        // Check for sorting salvage complete message
         if (event.getType() == ChatMessageType.SPAM || event.getType() == ChatMessageType.GAMEMESSAGE) {
             String message = event.getMessage();
-            if (message != null && message.equals(SORTING_DONE_MESSAGE)) {
+            if (message == null) {
+                return;
+            }
+            
+            // Check for sorting salvage complete message
+            if (message.equals(SORTING_DONE_MESSAGE)) {
                 // Player finished sorting salvage - play alert sound
                 if (config.playSortingDoneSound()) {
                     playSoundEffect();
@@ -339,6 +346,17 @@ public class IdleMasterPlugin extends Plugin {
                 salvageInfo.setPlayerSortingSalvage(false);
                 salvageInfo.setPlayerSalvaging(false);
                 log.debug("Sorting salvage complete");
+            }
+            
+            // Check for shipwreck depleted message (player finished salvaging a spot)
+            if (message.equals(SHIPWRECK_DEPLETED_MESSAGE)) {
+                // Player finished salvaging - play idle alert sound
+                if (config.playPlayerIdleSound()) {
+                    playSoundEffect();
+                }
+                // Update player status to idle
+                salvageInfo.setPlayerSalvaging(false);
+                log.debug("Shipwreck depleted - player now idle");
             }
         }
     }
@@ -575,8 +593,6 @@ public class IdleMasterPlugin extends Plugin {
     private void updateCargoCount() {
         // Read cargo from widgets when available, otherwise use saved values
         try {
-            int previousCargoCount = cargoCount;
-            int previousMaxCapacity = maxCargoCapacity;
             boolean dataChanged = false;
             
             // Read occupied slots from widget (only update if widget is visible)
@@ -826,15 +842,10 @@ public class IdleMasterPlugin extends Plugin {
             alertedCargoFull = false; // Reset when cargo has space
         }
 
-        // Check player idle - only alert once when player becomes idle
-        // Don't alert while sorting (sorting done is handled via chat message)
+        // Player idle sound is now only triggered by shipwreck depleted chat message
+        // Keep tracking idle state for the alert reset logic
         boolean playerIdle = !salvageInfo.isPlayerSalvaging() && !salvageInfo.isPlayerSortingSalvage();
-        boolean playerSorting = salvageInfo.isPlayerSortingSalvage();
-        
-        if (config.playPlayerIdleSound() && playerIdle && !alertedPlayerIdle && !playerSorting) {
-            shouldPlaySound = true;
-            alertedPlayerIdle = true;
-        } else if (!playerIdle) {
+        if (!playerIdle) {
             alertedPlayerIdle = false; // Reset when player starts salvaging or sorting
         }
 

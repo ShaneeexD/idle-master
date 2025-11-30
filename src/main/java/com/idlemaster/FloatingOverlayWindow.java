@@ -750,14 +750,8 @@ public class FloatingOverlayWindow extends JFrame {
     private void updateInventoryDisplay() {
         if (config.showInventory()) {
             inventoryLabel.setText("Inv: " + salvageInfo.getInventoryText());
-            int usedSlots = salvageInfo.getInventoryUsedSlots();
-            if (usedSlots >= 28) {
-                inventoryLabel.setForeground(Constants.WARNING_COLOR);
-            } else if (usedSlots >= 20) {
-                inventoryLabel.setForeground(Constants.INVENTORY_COLOR);
-            } else {
-                inventoryLabel.setForeground(Constants.DARK_TEXT_COLOR);
-            }
+            int inventoryPercent = salvageInfo.getInventoryPercentage();
+            inventoryLabel.setForeground(getCargoColor(inventoryPercent));
         }
     }
     
@@ -765,14 +759,34 @@ public class FloatingOverlayWindow extends JFrame {
         if (config.showCargo()) {
             cargoLabel.setText("Cargo: " + salvageInfo.getCargoText());
             int cargoPercent = salvageInfo.getCargoPercentage();
-            if (cargoPercent >= 100) {
-                cargoLabel.setForeground(Constants.SAFE_COLOR);
-            } else if (cargoPercent >= 80) {
-                cargoLabel.setForeground(Constants.CARGO_COLOR);
-            } else {
-                cargoLabel.setForeground(Constants.DARK_TEXT_COLOR);
-            }
+            cargoLabel.setForeground(getCargoColor(cargoPercent));
         }
+    }
+    
+    /**
+     * Returns a color that smoothly transitions from green (0%) to red (100%)
+     * Green -> Yellow -> Orange -> Red
+     */
+    private Color getCargoColor(int percent) {
+        // Clamp percent to 0-100
+        percent = Math.max(0, Math.min(100, percent));
+        
+        int r, g, b;
+        if (percent <= 50) {
+            // Green to Yellow (0-50%): increase red from 0 to 255
+            float ratio = percent / 50.0f;
+            r = (int) (255 * ratio);
+            g = 255;
+            b = 0;
+        } else {
+            // Yellow to Red (50-100%): decrease green from 255 to 0
+            float ratio = (percent - 50) / 50.0f;
+            r = 255;
+            g = (int) (255 * (1 - ratio));
+            b = 0;
+        }
+        
+        return new Color(r, g, b);
     }
     
     private void updatePlayerStatusDisplay() {

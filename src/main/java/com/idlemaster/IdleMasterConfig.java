@@ -145,8 +145,8 @@ public interface IdleMasterConfig extends Config {
 
     @ConfigItem(
         keyName = "playPlayerIdleSound",
-        name = "Play sound when idle",
-        description = "Play a sound when player stops salvaging.",
+        name = "Play sound when shipwreck depleted",
+        description = "Play a sound when the shipwreck is fully salvaged and reclaimed by the sea.",
         section = playerStatusSection,
         position = 3
     )

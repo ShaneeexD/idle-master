@@ -72,9 +72,12 @@ public class SalvageInfo {
         return String.format("%d/%d (%d%%)", boatHealth, maxBoatHealth, getBoatHealthPercentage());
     }
     
+    public int getInventoryPercentage() {
+        return (inventoryUsedSlots * 100) / MAX_INVENTORY_SLOTS;
+    }
+    
     public String getInventoryText() {
-        int usagePercentage = (inventoryUsedSlots * 100) / MAX_INVENTORY_SLOTS;
-        return String.format("%d/28 (%d%%)", inventoryUsedSlots, usagePercentage);
+        return String.format("%d/28 (%d%%)", inventoryUsedSlots, getInventoryPercentage());
     }
     
     public int getCargoPercentage() {
