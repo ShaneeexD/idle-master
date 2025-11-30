@@ -99,7 +99,7 @@ public class FloatingOverlayWindow extends JFrame {
         setupEventListeners();
         
         if (!loadPositionAndSize()) {
-            setSize(280, 200);
+            setSize(200, 150);
         }
         
         validatePosition();

@@ -55,7 +55,7 @@ public class IdleMasterPlugin extends Plugin {
         60465, 60467, 60469, 60471, 60473, 60475, 60477, 60479
     );
     
-    private static final int SALVAGE_RANGE = 7;
+    private static final int SALVAGE_RANGE = 9;
     private static final int SHIPWRECK_SIZE = 2;
     
     // Cargo hold inventory IDs
@@ -142,27 +142,41 @@ public class IdleMasterPlugin extends Plugin {
         log.info("Idle Master plugin started!");
         
         salvageInfo = new SalvageInfo();
-        loadCargoCount(); // Load saved cargo count
+        loadCargoData(); // Load saved cargo data
         createAndShowWindow();
         overlayManager.add(overlay);
         hooks.registerRenderableDrawListener(drawListener);
     }
     
-    private void loadCargoCount() {
-        String saved = configManager.getConfiguration("idlemaster", "savedCargoCount");
-        if (saved != null) {
+    private void loadCargoData() {
+        // Load saved cargo count
+        String savedCount = configManager.getConfiguration("idlemaster", "savedCargoCount");
+        if (savedCount != null) {
             try {
-                cargoCount = Integer.parseInt(saved);
+                cargoCount = Integer.parseInt(savedCount);
                 salvageInfo.setCargoCount(cargoCount);
                 log.debug("Loaded saved cargo count: {}", cargoCount);
             } catch (NumberFormatException e) {
                 cargoCount = 0;
             }
         }
+        
+        // Load saved max capacity
+        String savedCapacity = configManager.getConfiguration("idlemaster", "savedCargoCapacity");
+        if (savedCapacity != null) {
+            try {
+                maxCargoCapacity = Integer.parseInt(savedCapacity);
+                salvageInfo.setMaxCargoCount(maxCargoCapacity);
+                log.debug("Loaded saved cargo capacity: {}", maxCargoCapacity);
+            } catch (NumberFormatException e) {
+                maxCargoCapacity = 60;
+            }
+        }
     }
     
-    private void saveCargoCount() {
+    private void saveCargoData() {
         configManager.setConfiguration("idlemaster", "savedCargoCount", String.valueOf(cargoCount));
+        configManager.setConfiguration("idlemaster", "savedCargoCapacity", String.valueOf(maxCargoCapacity));
     }
 
     private void createAndShowWindow() {
@@ -305,7 +319,7 @@ public class IdleMasterPlugin extends Plugin {
                 // Crew member stored salvage - increment cargo count
                 cargoCount++;
                 salvageInfo.setCargoCount(cargoCount);
-                saveCargoCount();
+                saveCargoData();
                 log.debug("Crew {} stored salvage (overhead), cargo now: {}", npcName, cargoCount);
             }
         }
@@ -505,20 +519,27 @@ public class IdleMasterPlugin extends Plugin {
                     int health = Integer.parseInt(parts[0].trim());
                     int maxHealth = Integer.parseInt(parts[1].trim());
                     
-                    // Check if boat took damage (HP decreased)
-                    if (previousBoatHealth > 0 && health < previousBoatHealth) {
-                        lastBoatDamageTime = Instant.now();
-                        salvageInfo.setBoatUnderAttack(true);
-                        salvageInfo.setMonsterAlertText("UNDER ATTACK!");
-                    }
-                    
-                    // Check if attack timeout has passed (10 seconds without damage)
-                    if (lastBoatDamageTime != null) {
-                        long secondsSinceDamage = Duration.between(lastBoatDamageTime, Instant.now()).getSeconds();
-                        if (secondsSinceDamage >= BOAT_ATTACK_TIMEOUT_SECONDS) {
-                            salvageInfo.setBoatUnderAttack(false);
-                            lastBoatDamageTime = null;
+                    // Only detect boat attacks while in salvage range
+                    if (inSalvageRange) {
+                        // Check if boat took damage (HP decreased)
+                        if (previousBoatHealth > 0 && health < previousBoatHealth) {
+                            lastBoatDamageTime = Instant.now();
+                            salvageInfo.setBoatUnderAttack(true);
+                            salvageInfo.setMonsterAlertText("UNDER ATTACK!");
                         }
+                        
+                        // Check if attack timeout has passed (10 seconds without damage)
+                        if (lastBoatDamageTime != null) {
+                            long secondsSinceDamage = Duration.between(lastBoatDamageTime, Instant.now()).getSeconds();
+                            if (secondsSinceDamage >= BOAT_ATTACK_TIMEOUT_SECONDS) {
+                                salvageInfo.setBoatUnderAttack(false);
+                                lastBoatDamageTime = null;
+                            }
+                        }
+                    } else {
+                        // Reset attack state when not in salvage range
+                        salvageInfo.setBoatUnderAttack(false);
+                        lastBoatDamageTime = null;
                     }
                     
                     previousBoatHealth = health;
@@ -552,34 +573,45 @@ public class IdleMasterPlugin extends Plugin {
     }
 
     private void updateCargoCount() {
-        // Read cargo from widgets (same approach as boat health)
+        // Read cargo from widgets when available, otherwise use saved values
         try {
             int previousCargoCount = cargoCount;
+            int previousMaxCapacity = maxCargoCapacity;
+            boolean dataChanged = false;
             
-            // Read occupied slots from widget
+            // Read occupied slots from widget (only update if widget is visible)
             Widget occupiedWidget = client.getWidget(CARGO_OCCUPIED_WIDGET_ID);
             if (occupiedWidget != null && !occupiedWidget.isHidden() && occupiedWidget.getText() != null) {
                 String text = occupiedWidget.getText().trim();
                 if (!text.isEmpty()) {
-                    cargoCount = Integer.parseInt(text);
+                    int widgetCargoCount = Integer.parseInt(text);
+                    if (widgetCargoCount != cargoCount) {
+                        cargoCount = widgetCargoCount;
+                        dataChanged = true;
+                    }
                 }
             }
             
-            // Read max capacity from widget
+            // Read max capacity from widget (only update if widget is visible)
             Widget capacityWidget = client.getWidget(CARGO_CAPACITY_WIDGET_ID);
             if (capacityWidget != null && !capacityWidget.isHidden() && capacityWidget.getText() != null) {
                 String text = capacityWidget.getText().trim();
                 if (!text.isEmpty()) {
-                    maxCargoCapacity = Integer.parseInt(text);
+                    int widgetMaxCapacity = Integer.parseInt(text);
+                    if (widgetMaxCapacity != maxCargoCapacity) {
+                        maxCargoCapacity = widgetMaxCapacity;
+                        dataChanged = true;
+                    }
                 }
             }
             
+            // Update salvageInfo with current values (saved or from widget)
             salvageInfo.setCargoCount(cargoCount);
             salvageInfo.setMaxCargoCount(maxCargoCapacity > 0 ? maxCargoCapacity : 60);
             
-            // Save if cargo count changed
-            if (cargoCount != previousCargoCount) {
-                saveCargoCount();
+            // Save if any data changed
+            if (dataChanged) {
+                saveCargoData();
             }
         } catch (Exception e) {
             log.debug("Error reading cargo: {}", e.getMessage());

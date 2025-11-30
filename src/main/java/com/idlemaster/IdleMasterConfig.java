@@ -214,7 +214,7 @@ public interface IdleMasterConfig extends Config {
         position = 2
     )
     @Range(min = 1, max = 20)
-    default int monsterAlertRange() { return 10; }
+    default int monsterAlertRange() { return 15; }
 
     @ConfigItem(
         keyName = "playMonsterAlertSound",
