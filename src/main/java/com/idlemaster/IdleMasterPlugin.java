@@ -11,6 +11,7 @@ import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
@@ -85,6 +86,23 @@ public class IdleMasterPlugin extends Plugin {
     
     // Chat message when shipwreck is depleted
     private static final String SHIPWRECK_DEPLETED_MESSAGE = "You salvage all you can from the shipwreck before it is reclaimed by the sea.";
+    
+    // Chat message for repair kit usage
+    private static final String REPAIR_KIT_MESSAGE = "You use the repair kit to fix up the boat.";
+    
+    // Repair kit heal amounts by tier
+    private static final java.util.Map<Integer, Integer> REPAIR_KIT_HEALS = java.util.Map.of(
+        31964, 5,   // Wooden repair kit
+        31967, 10,  // Oak repair kit
+        31970, 20,  // Teak repair kit
+        31973, 30,  // Mahogany repair kit
+        31976, 40,  // Camphor repair kit
+        31979, 45,  // Ironwood repair kit
+        31982, 50   // Rosewood repair kit
+    );
+    
+    // Track last used repair kit
+    private int lastUsedRepairKitHeal = 0;
     
     // Sound effect ID for alerts
     private static final int SOUND_ID = 3817;
@@ -358,6 +376,29 @@ public class IdleMasterPlugin extends Plugin {
                 salvageInfo.setPlayerSalvaging(false);
                 log.debug("Shipwreck depleted - player now idle");
             }
+            
+            // Check for repair kit usage message
+            if (message.equals(REPAIR_KIT_MESSAGE) && lastUsedRepairKitHeal > 0) {
+                // Update boat health using the tracked heal amount
+                int currentHealth = salvageInfo.getBoatHealth();
+                int maxHealth = salvageInfo.getMaxBoatHealth();
+                int newHealth = Math.min(currentHealth + lastUsedRepairKitHeal, maxHealth);
+                salvageInfo.setBoatHealth(newHealth);
+                previousBoatHealth = newHealth; // Update tracking to prevent false attack detection
+                
+                log.debug("Repair kit used: +{} HP, boat health now {}/{}", lastUsedRepairKitHeal, newHealth, maxHealth);
+                lastUsedRepairKitHeal = 0; // Reset after use
+            }
+        }
+    }
+    
+    @Subscribe
+    public void onMenuOptionClicked(MenuOptionClicked event) {
+        // Track when player clicks "Use" on a repair kit
+        int itemId = event.getItemId();
+        if (REPAIR_KIT_HEALS.containsKey(itemId)) {
+            lastUsedRepairKitHeal = REPAIR_KIT_HEALS.get(itemId);
+            log.debug("Repair kit clicked: itemId={}, heal={}", itemId, lastUsedRepairKitHeal);
         }
     }
 
