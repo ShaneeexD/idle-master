@@ -26,6 +26,11 @@ public class SalvageInfo {
         this.monsterAlertText = other.monsterAlertText;
         this.characterName = other.characterName;
         this.idleTimeSeconds = other.idleTimeSeconds;
+        this.sailingXp = other.sailingXp;
+        this.sailingLevel = other.sailingLevel;
+        this.xpToNextLevel = other.xpToNextLevel;
+        this.xpInCurrentLevel = other.xpInCurrentLevel;
+        this.xpForCurrentLevel = other.xpForCurrentLevel;
     }
     
     // Boat health
@@ -60,6 +65,13 @@ public class SalvageInfo {
     
     // Idle timer
     private int idleTimeSeconds = 0;
+    
+    // Sailing XP tracking
+    private int sailingXp = 0;
+    private int sailingLevel = 1;
+    private int xpToNextLevel = 0;
+    private int xpInCurrentLevel = 0;
+    private int xpForCurrentLevel = 0;
     
     // Getters for display text
     
@@ -129,5 +141,29 @@ public class SalvageInfo {
     // Check if any attack is happening (monster or boat damage)
     public boolean isMonsterAttacking() {
         return monsterAttacking || boatUnderAttack;
+    }
+    
+    // XP progress percentage within current level
+    public int getXpProgressPercentage() {
+        if (xpForCurrentLevel == 0) return 0;
+        return (xpInCurrentLevel * 100) / xpForCurrentLevel;
+    }
+    
+    // Format XP remaining text
+    public String getXpRemainingText() {
+        if (xpToNextLevel <= 0) {
+            return "Max Level";
+        }
+        return formatNumber(xpToNextLevel) + " left";
+    }
+    
+    // Format large numbers with K/M suffix
+    private String formatNumber(int num) {
+        if (num >= 1_000_000) {
+            return String.format("%.1fM", num / 1_000_000.0);
+        } else if (num >= 1_000) {
+            return String.format("%.1fK", num / 1_000.0);
+        }
+        return String.valueOf(num);
     }
 }

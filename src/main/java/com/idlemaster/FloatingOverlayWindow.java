@@ -63,6 +63,7 @@ public class FloatingOverlayWindow extends JFrame {
     private JLabel playerStatusLabel;
     private JLabel crewStatusLabel;
     private JLabel monsterAlertLabel;
+    private JPanel xpBarPanel;
     
     private JPanel titleBar;
     private JLabel characterNameLabel;
@@ -185,6 +186,7 @@ public class FloatingOverlayWindow extends JFrame {
         playerStatusLabel = createLabel("Player: IDLE", playerIcon);
         crewStatusLabel = createLabel("Crew: No Crew", crewIcon);
         monsterAlertLabel = createLabel("Alert: Safe", alertIcon);
+        xpBarPanel = createXpBarPanel();
     }
     
     private JPanel createHealthBarPanel() {
@@ -242,6 +244,88 @@ public class FloatingOverlayWindow extends JFrame {
         return panel;
     }
     
+    private JPanel createXpBarPanel() {
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                int width = getWidth();
+                int height = getHeight();
+                int barHeight = 14;
+                int barY = (height - barHeight) / 2;
+                int barX = 0;
+                int barWidth = width - 4;
+                
+                // Draw dark background
+                g2d.setColor(new Color(30, 30, 30));
+                g2d.fillRoundRect(barX, barY, barWidth, barHeight, 4, 4);
+                
+                // Draw XP progress fill (cyan/teal color like RuneLite XP tracker)
+                int xpPercent = salvageInfo.getXpProgressPercentage();
+                int fillWidth = (int) (barWidth * (xpPercent / 100.0));
+                
+                g2d.setColor(new Color(0, 180, 180)); // Cyan/teal
+                g2d.fillRoundRect(barX, barY, fillWidth, barHeight, 4, 4);
+                
+                // Draw border
+                g2d.setColor(new Color(60, 60, 60));
+                g2d.drawRoundRect(barX, barY, barWidth, barHeight, 4, 4);
+                
+                // Get level info
+                int currentLevel = salvageInfo.getSailingLevel();
+                int nextLevel = Math.min(currentLevel + 1, 99);
+                
+                g2d.setFont(new Font("Arial", Font.PLAIN, 10));
+                FontMetrics fm = g2d.getFontMetrics();
+                int textY = barY + ((barHeight - fm.getHeight()) / 2) + fm.getAscent();
+                int padding = 4;
+                
+                // Left text - current level (clamped to left)
+                String leftText = "Lvl " + currentLevel;
+                int leftTextX = barX + padding;
+                
+                // Right text - next level (clamped to right)
+                String rightText = currentLevel >= 99 ? "" : "Lvl " + nextLevel;
+                int rightTextWidth = fm.stringWidth(rightText);
+                int rightTextX = barX + barWidth - rightTextWidth - padding;
+                
+                // Center text - XP remaining
+                String centerText = currentLevel >= 99 ? "Max Level" : salvageInfo.getXpRemainingText();
+                int centerTextWidth = fm.stringWidth(centerText);
+                int centerTextX = barX + (barWidth - centerTextWidth) / 2;
+                
+                // Draw left text (current level)
+                g2d.setColor(Color.BLACK);
+                g2d.drawString(leftText, leftTextX + 1, textY + 1);
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(leftText, leftTextX, textY);
+                
+                // Draw center text (XP remaining)
+                g2d.setColor(Color.BLACK);
+                g2d.drawString(centerText, centerTextX + 1, textY + 1);
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(centerText, centerTextX, textY);
+                
+                // Draw right text (next level)
+                if (!rightText.isEmpty()) {
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawString(rightText, rightTextX + 1, textY + 1);
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString(rightText, rightTextX, textY);
+                }
+                
+                g2d.dispose();
+            }
+        };
+        panel.setOpaque(false);
+        panel.setPreferredSize(new Dimension(150, 18));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+        return panel;
+    }
+    
     private void setupLayout() {
         infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
@@ -253,6 +337,7 @@ public class FloatingOverlayWindow extends JFrame {
         addComponentIfVisible(config.showPlayerStatus(), playerStatusLabel);
         addComponentIfVisible(config.showCrewStatus(), crewStatusLabel);
         addComponentIfVisible(config.showMonsterAlert(), monsterAlertLabel);
+        addComponentIfVisible(config.showXpBar(), xpBarPanel);
         
         contentPanel.add(infoPanel, BorderLayout.CENTER);
         
@@ -597,6 +682,7 @@ public class FloatingOverlayWindow extends JFrame {
         playerStatusLabel.setVisible(config.showPlayerStatus());
         crewStatusLabel.setVisible(config.showCrewStatus());
         monsterAlertLabel.setVisible(config.showMonsterAlert());
+        xpBarPanel.setVisible(config.showXpBar());
         
         rebuildInfoPanel();
         updateDisplay();
@@ -612,6 +698,7 @@ public class FloatingOverlayWindow extends JFrame {
         addComponentIfVisible(config.showPlayerStatus(), playerStatusLabel);
         addComponentIfVisible(config.showCrewStatus(), crewStatusLabel);
         addComponentIfVisible(config.showMonsterAlert(), monsterAlertLabel);
+        addComponentIfVisible(config.showXpBar(), xpBarPanel);
         
         contentPanel.add(infoPanel, BorderLayout.CENTER);
     }
@@ -619,7 +706,11 @@ public class FloatingOverlayWindow extends JFrame {
     public void updateCharacterName(String name) {
         if (characterNameLabel != null) {
             SwingUtilities.invokeLater(() -> {
-                characterNameLabel.setText(name != null ? name : "");
+                if (name != null && !name.isEmpty()) {
+                    characterNameLabel.setText(name + " - Salvaging");
+                } else {
+                    characterNameLabel.setText("");
+                }
             });
         }
     }
@@ -736,6 +827,7 @@ public class FloatingOverlayWindow extends JFrame {
             updatePlayerStatusDisplay();
             updateCrewStatusDisplay();
             updateMonsterAlertDisplay();
+            updateXpBarDisplay();
             contentPanel.repaint();
         });
     }
@@ -828,6 +920,13 @@ public class FloatingOverlayWindow extends JFrame {
                 monsterAlertLabel.setForeground(Constants.SAFE_COLOR);
                 stopFlashTimer(); // Stop flashing when safe
             }
+        }
+    }
+    
+    private void updateXpBarDisplay() {
+        if (config.showXpBar()) {
+            // The XP bar panel repaints itself with current salvageInfo values
+            xpBarPanel.repaint();
         }
     }
 }

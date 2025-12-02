@@ -225,6 +225,24 @@ public interface IdleMasterConfig extends Config {
     )
     default boolean playMonsterAlertSound() { return true; }
 
+    // --- XP Progress Section ---
+    @ConfigSection(
+        name = "Sailing - XP Progress",
+        description = "Settings for sailing XP progress display.",
+        position = 65,
+        closedByDefault = true
+    )
+    String xpProgressSection = "xpProgressSection";
+
+    @ConfigItem(
+        keyName = "showXpBar",
+        name = "Show XP Bar",
+        description = "Display sailing XP progress bar at the bottom of the overlay.",
+        section = xpProgressSection,
+        position = 1
+    )
+    default boolean showXpBar() { return true; }
+
     // --- Window Settings Section ---
     @ConfigSection(
         name = "General Settings",

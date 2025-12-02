@@ -13,6 +13,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.OverheadTextChanged;
+import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.Hooks;
@@ -403,6 +404,14 @@ public class IdleMasterPlugin extends Plugin {
     }
 
     @Subscribe
+    public void onStatChanged(StatChanged event) {
+        // Update sailing XP when it changes
+        if (event.getSkill() == Skill.SAILING) {
+            updateSailingXp();
+        }
+    }
+    
+    @Subscribe
     public void onConfigChanged(ConfigChanged event) {
         if (event.getGroup().equals("idlemaster")) {
             if (event.getKey().equals("showOverlay") && config.showOverlay()) {
@@ -468,6 +477,9 @@ public class IdleMasterPlugin extends Plugin {
 
         // Check for monster attacks
         updateMonsterAlert();
+        
+        // Update sailing XP
+        updateSailingXp();
 
         // Update the floating window
         if (floatingWindow != null && (previousSalvageInfo == null || !previousSalvageInfo.equals(salvageInfo))) {
@@ -672,6 +684,35 @@ public class IdleMasterPlugin extends Plugin {
             }
         } catch (Exception e) {
             log.debug("Error reading cargo: {}", e.getMessage());
+        }
+    }
+    
+    private void updateSailingXp() {
+        try {
+            int currentXp = client.getSkillExperience(Skill.SAILING);
+            int currentLevel = client.getRealSkillLevel(Skill.SAILING);
+            
+            salvageInfo.setSailingXp(currentXp);
+            salvageInfo.setSailingLevel(currentLevel);
+            
+            // Calculate XP for next level
+            if (currentLevel >= 99) {
+                salvageInfo.setXpToNextLevel(0);
+                salvageInfo.setXpInCurrentLevel(0);
+                salvageInfo.setXpForCurrentLevel(0);
+            } else {
+                int xpForNextLevel = Experience.getXpForLevel(currentLevel + 1);
+                int xpForCurrentLevel = Experience.getXpForLevel(currentLevel);
+                int xpToNext = xpForNextLevel - currentXp;
+                int xpInLevel = currentXp - xpForCurrentLevel;
+                int xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
+                
+                salvageInfo.setXpToNextLevel(xpToNext);
+                salvageInfo.setXpInCurrentLevel(xpInLevel);
+                salvageInfo.setXpForCurrentLevel(xpNeededForLevel);
+            }
+        } catch (Exception e) {
+            log.debug("Error updating sailing XP: {}", e.getMessage());
         }
     }
 
