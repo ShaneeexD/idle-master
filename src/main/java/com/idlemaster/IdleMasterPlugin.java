@@ -141,6 +141,10 @@ public class IdleMasterPlugin extends Plugin {
     private boolean alertedPlayerIdle = false;
     private boolean alertedCrewIdle = false;
     private boolean alertedMonsterAttack = false;
+    private boolean alertedSalvageSpotActive = false;
+    private int previousActiveSalvageSpots = 0;
+    private Instant salvageSpotsDepletedTime = null;
+    private static final int SALVAGE_SPOT_DEPLETED_THRESHOLD_SECONDS = 10;
     
     // Cargo tracking
     private int cargoCount = 0;
@@ -447,6 +451,15 @@ public class IdleMasterPlugin extends Plugin {
         // Show/hide overlay based on salvage range
         if (floatingWindow != null && wasInRange != inSalvageRange) {
             SwingUtilities.invokeLater(() -> floatingWindow.setVisible(inSalvageRange));
+            
+            // Reset boat attack tracking when entering salvage range
+            // This prevents false attack alerts from HP changes that happened while sailing
+            if (inSalvageRange) {
+                previousBoatHealth = -1;
+                lastBoatDamageTime = null;
+                salvageInfo.setBoatUnderAttack(false);
+                alertedMonsterAttack = false;
+            }
         }
         
         // Only update info if in salvage range
@@ -480,6 +493,9 @@ public class IdleMasterPlugin extends Plugin {
         
         // Update sailing XP
         updateSailingXp();
+        
+        // Update salvage spot count
+        updateSalvageSpotCount();
 
         // Update the floating window
         if (floatingWindow != null && (previousSalvageInfo == null || !previousSalvageInfo.equals(salvageInfo))) {
@@ -519,6 +535,76 @@ public class IdleMasterPlugin extends Plugin {
         }
         
         return false;
+    }
+    
+    /**
+     * Counts active and total salvage spots near the player's boat.
+     */
+    private void updateSalvageSpotCount() {
+        WorldPoint boatLocation = getPlayerBoatLocation();
+        if (boatLocation == null) {
+            salvageInfo.setActiveSalvageSpots(0);
+            salvageInfo.setTotalSalvageSpots(0);
+            return;
+        }
+        
+        int activeCount = 0;
+        int totalCount = 0;
+        
+        for (GameObject shipwreck : activeShipwrecks) {
+            WorldPoint shipwreckLocation = shipwreck.getWorldLocation();
+            
+            // Check if this shipwreck is within salvage range
+            int minX = shipwreckLocation.getX() - SALVAGE_RANGE;
+            int maxX = shipwreckLocation.getX() + SHIPWRECK_SIZE - 1 + SALVAGE_RANGE;
+            int minY = shipwreckLocation.getY() - SALVAGE_RANGE;
+            int maxY = shipwreckLocation.getY() + SHIPWRECK_SIZE - 1 + SALVAGE_RANGE;
+            
+            if (boatLocation.getPlane() == shipwreckLocation.getPlane() &&
+                boatLocation.getX() >= minX && boatLocation.getX() <= maxX &&
+                boatLocation.getY() >= minY && boatLocation.getY() <= maxY) {
+                
+                totalCount++;
+                
+                // Check if it's an active (salvageable) shipwreck
+                if (SHIPWRECK_SALVAGEABLE_IDS.contains(shipwreck.getId())) {
+                    activeCount++;
+                }
+            }
+        }
+        
+        // Track when spots become depleted
+        if (activeCount == 0 && totalCount > 0) {
+            if (salvageSpotsDepletedTime == null) {
+                // Just became depleted, start timer
+                salvageSpotsDepletedTime = Instant.now();
+            }
+            // Reset alert when all spots are depleted
+            alertedSalvageSpotActive = false;
+        } else if (activeCount > 0) {
+            // Check if spots went from 0 to 1+ (respawn alert)
+            // Only alert if spots were depleted for at least 10 seconds
+            if (config.playSalvageSpotSound() && previousActiveSalvageSpots == 0 && totalCount > 0) {
+                if (!alertedSalvageSpotActive && salvageSpotsDepletedTime != null) {
+                    long secondsDepleted = Duration.between(salvageSpotsDepletedTime, Instant.now()).getSeconds();
+                    if (secondsDepleted >= SALVAGE_SPOT_DEPLETED_THRESHOLD_SECONDS) {
+                        playSoundEffect();
+                        alertedSalvageSpotActive = true;
+                        log.debug("Salvage spot respawned after {}s: {} active", secondsDepleted, activeCount);
+                    }
+                }
+            }
+            // Clear depleted timer since spots are now active
+            salvageSpotsDepletedTime = null;
+        } else {
+            // No spots in range, reset everything
+            salvageSpotsDepletedTime = null;
+            alertedSalvageSpotActive = false;
+        }
+        
+        previousActiveSalvageSpots = activeCount;
+        salvageInfo.setActiveSalvageSpots(activeCount);
+        salvageInfo.setTotalSalvageSpots(totalCount);
     }
     
     /**
@@ -839,14 +925,11 @@ public class IdleMasterPlugin extends Plugin {
             boolean monsterAttacking = false;
             String monsterName = "";
             
-            int currentHealth = salvageInfo.getBoatHealth();
-            
-            // Method 1: Check if boat health is decreasing (being attacked)
-            if (previousBoatHealth > 0 && currentHealth < previousBoatHealth) {
+            // Method 1: Check if boat is flagged as under attack (set by updateBoatHealth when HP decreases)
+            if (salvageInfo.isBoatUnderAttack()) {
                 monsterAttacking = true;
                 monsterName = "Under Attack!";
             }
-            previousBoatHealth = currentHealth;
             
             // Method 2: Check for specific salvage monster NPCs in range
             // Monsters are on the TOP LEVEL world view (the sea), not on our boat

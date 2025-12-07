@@ -115,6 +115,24 @@ public interface IdleMasterConfig extends Config {
     )
     default boolean playCargoSound() { return true; }
 
+    @ConfigItem(
+        keyName = "showSalvageSpots",
+        name = "Show Salvage Spots",
+        description = "Display count of active salvage spots in range (e.g., 2/2 for double spot).",
+        section = salvagingSection,
+        position = 1
+    )
+    default boolean showSalvageSpots() { return true; }
+
+    @ConfigItem(
+        keyName = "playSalvageSpotSound",
+        name = "Play sound when spot respawns",
+        description = "Play a sound when a salvage spot becomes active after being depleted.",
+        section = salvagingSection,
+        position = 2
+    )
+    default boolean playSalvageSpotSound() { return true; }
+
     // --- Player Status Section ---
     @ConfigSection(
         name = "Sailing - Player Status",

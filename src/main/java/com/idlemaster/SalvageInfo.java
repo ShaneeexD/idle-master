@@ -31,6 +31,8 @@ public class SalvageInfo {
         this.xpToNextLevel = other.xpToNextLevel;
         this.xpInCurrentLevel = other.xpInCurrentLevel;
         this.xpForCurrentLevel = other.xpForCurrentLevel;
+        this.activeSalvageSpots = other.activeSalvageSpots;
+        this.totalSalvageSpots = other.totalSalvageSpots;
     }
     
     // Boat health
@@ -73,6 +75,10 @@ public class SalvageInfo {
     private int xpInCurrentLevel = 0;
     private int xpForCurrentLevel = 0;
     
+    // Salvage spot tracking
+    private int activeSalvageSpots = 0;
+    private int totalSalvageSpots = 0;
+    
     // Getters for display text
     
     public int getBoatHealthPercentage() {
@@ -99,6 +105,13 @@ public class SalvageInfo {
     
     public String getCargoText() {
         return String.format("%d/%d (%d%%)", cargoCount, maxCargoCount, getCargoPercentage());
+    }
+    
+    public String getSalvageSpotsText() {
+        if (totalSalvageSpots == 0) {
+            return "No spots";
+        }
+        return String.format("%d/%d", activeSalvageSpots, totalSalvageSpots);
     }
     
     public String getPlayerStatusText() {

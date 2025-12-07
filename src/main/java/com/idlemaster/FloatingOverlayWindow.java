@@ -60,6 +60,7 @@ public class FloatingOverlayWindow extends JFrame {
     private JPanel boatHealthPanel;
     private JLabel inventoryLabel;
     private JLabel cargoLabel;
+    private JLabel salvageSpotsLabel;
     private JLabel playerStatusLabel;
     private JLabel crewStatusLabel;
     private JLabel monsterAlertLabel;
@@ -73,6 +74,7 @@ public class FloatingOverlayWindow extends JFrame {
     private BufferedImage boatIcon;
     private BufferedImage inventoryIcon;
     private BufferedImage cargoIcon;
+    private BufferedImage salvageSpotsIcon;
     private BufferedImage playerIcon;
     private BufferedImage crewIcon;
     private BufferedImage alertIcon;
@@ -183,6 +185,7 @@ public class FloatingOverlayWindow extends JFrame {
         boatHealthPanel = createHealthBarPanel();
         inventoryLabel = createLabel("Inv: 0/28", inventoryIcon);
         cargoLabel = createLabel("Cargo: 0/xx", cargoIcon);
+        salvageSpotsLabel = createLabel("Spots: 0/0", salvageSpotsIcon);
         playerStatusLabel = createLabel("Player: IDLE", playerIcon);
         crewStatusLabel = createLabel("Crew: No Crew", crewIcon);
         monsterAlertLabel = createLabel("Alert: Safe", alertIcon);
@@ -334,6 +337,7 @@ public class FloatingOverlayWindow extends JFrame {
         addComponentIfVisible(config.showBoatHealth(), boatHealthPanel);
         addComponentIfVisible(config.showInventory(), inventoryLabel);
         addComponentIfVisible(config.showCargo(), cargoLabel);
+        addComponentIfVisible(config.showSalvageSpots(), salvageSpotsLabel);
         addComponentIfVisible(config.showPlayerStatus(), playerStatusLabel);
         addComponentIfVisible(config.showCrewStatus(), crewStatusLabel);
         addComponentIfVisible(config.showMonsterAlert(), monsterAlertLabel);
@@ -679,6 +683,7 @@ public class FloatingOverlayWindow extends JFrame {
         boatHealthPanel.setVisible(config.showBoatHealth());
         inventoryLabel.setVisible(config.showInventory());
         cargoLabel.setVisible(config.showCargo());
+        salvageSpotsLabel.setVisible(config.showSalvageSpots());
         playerStatusLabel.setVisible(config.showPlayerStatus());
         crewStatusLabel.setVisible(config.showCrewStatus());
         monsterAlertLabel.setVisible(config.showMonsterAlert());
@@ -695,6 +700,7 @@ public class FloatingOverlayWindow extends JFrame {
         addComponentIfVisible(config.showBoatHealth(), boatHealthPanel);
         addComponentIfVisible(config.showInventory(), inventoryLabel);
         addComponentIfVisible(config.showCargo(), cargoLabel);
+        addComponentIfVisible(config.showSalvageSpots(), salvageSpotsLabel);
         addComponentIfVisible(config.showPlayerStatus(), playerStatusLabel);
         addComponentIfVisible(config.showCrewStatus(), crewStatusLabel);
         addComponentIfVisible(config.showMonsterAlert(), monsterAlertLabel);
@@ -777,6 +783,7 @@ public class FloatingOverlayWindow extends JFrame {
         boatIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.BOAT_HEALTH_COLOR);
         inventoryIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.INVENTORY_COLOR);
         cargoIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.CARGO_COLOR);
+        salvageSpotsIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, new Color(100, 180, 255)); // Light blue
         playerIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.SALVAGING_COLOR);
         crewIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.CREW_COLOR);
         alertIcon = createPlaceholderIcon(ICON_SIZE, ICON_SIZE, Constants.DANGER_COLOR);
@@ -784,6 +791,7 @@ public class FloatingOverlayWindow extends JFrame {
         // Load actual icons with correct filenames and scale to consistent size
         inventoryIcon = loadAndScaleIcon("/com/idlemaster/icons/Inventory.png", inventoryIcon);
         cargoIcon = loadAndScaleIcon("/com/idlemaster/icons/cargo.png", cargoIcon);
+        salvageSpotsIcon = loadAndScaleIcon("/com/idlemaster/icons/salvage.png", salvageSpotsIcon);
         playerIcon = loadAndScaleIcon("/com/idlemaster/icons/player.png", playerIcon);
         crewIcon = loadAndScaleIcon("/com/idlemaster/icons/crew.png", crewIcon);
         alertIcon = loadAndScaleIcon("/com/idlemaster/icons/alert.png", alertIcon);
@@ -824,6 +832,7 @@ public class FloatingOverlayWindow extends JFrame {
             updateBoatHealthDisplay();
             updateInventoryDisplay();
             updateCargoDisplay();
+            updateSalvageSpotsDisplay();
             updatePlayerStatusDisplay();
             updateCrewStatusDisplay();
             updateMonsterAlertDisplay();
@@ -852,6 +861,23 @@ public class FloatingOverlayWindow extends JFrame {
             cargoLabel.setText("Cargo: " + salvageInfo.getCargoText());
             int cargoPercent = salvageInfo.getCargoPercentage();
             cargoLabel.setForeground(getCargoColor(cargoPercent));
+        }
+    }
+    
+    private void updateSalvageSpotsDisplay() {
+        if (config.showSalvageSpots()) {
+            salvageSpotsLabel.setText("Spots: " + salvageInfo.getSalvageSpotsText());
+            int active = salvageInfo.getActiveSalvageSpots();
+            int total = salvageInfo.getTotalSalvageSpots();
+            if (total == 0) {
+                salvageSpotsLabel.setForeground(Constants.DARK_TEXT_COLOR);
+            } else if (active == total) {
+                salvageSpotsLabel.setForeground(Constants.SALVAGING_COLOR); // All active - green
+            } else if (active == 0) {
+                salvageSpotsLabel.setForeground(Constants.IDLE_COLOR); // None active - red
+            } else {
+                salvageSpotsLabel.setForeground(Constants.CARGO_COLOR); // Some active - orange
+            }
         }
     }
     
