@@ -1,6 +1,7 @@
 package com.idlemaster;
 
 import com.google.inject.Provides;
+import com.idlemaster.skills.thieving.ThievingManager;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -126,6 +127,12 @@ public class IdleMasterPlugin extends Plugin {
     @Inject
     private ConfigManager configManager;
 
+    @Inject
+    private ThievingManager thievingManager;
+
+    @Inject
+    private com.idlemaster.skills.thieving.ThievingHighlightOverlay thievingHighlightOverlay;
+
     private FloatingOverlayWindow floatingWindow;
     private SalvageInfo salvageInfo;
     private SalvageInfo previousSalvageInfo;
@@ -172,6 +179,12 @@ public class IdleMasterPlugin extends Plugin {
         createAndShowWindow();
         overlayManager.add(overlay);
         hooks.registerRenderableDrawListener(drawListener);
+        
+        // Start thieving manager and overlay
+        if (config.enableThievingOverlay()) {
+            thievingManager.startUp();
+            overlayManager.add(thievingHighlightOverlay);
+        }
     }
     
     private void loadCargoData() {
@@ -238,30 +251,32 @@ public class IdleMasterPlugin extends Plugin {
                 floatingWindow = null;
             });
         }
+        
+        // Shutdown thieving manager and overlay
+        overlayManager.remove(thievingHighlightOverlay);
+        thievingManager.shutDown();
     }
     
     /**
-     * Hides other players' boats when in salvage range.
+     * Hides other players' boats when in salvage range, and NPCs during thieving distraction.
      */
     private boolean shouldDraw(Renderable renderable, boolean drawingUI) {
-        if (!config.hideOtherBoats()) {
-            return true;
-        }
-        
-        if (renderable instanceof Scene) {
+        // Hide other boats during salvaging
+        if (config.hideOtherBoats() && renderable instanceof Scene) {
             Scene scene = (Scene) renderable;
             
-            if (client.getTopLevelWorldView() == null) {
-                return true;
+            if (client.getTopLevelWorldView() != null) {
+                WorldEntity we = client.getTopLevelWorldView().worldEntities().byIndex(scene.getWorldViewId());
+                if (we != null && we.getOwnerType() == WorldEntity.OWNER_TYPE_OTHER_PLAYER && inSalvageRange) {
+                    return false;
+                }
             }
-            
-            WorldEntity we = client.getTopLevelWorldView().worldEntities().byIndex(scene.getWorldViewId());
-            if (we == null) {
-                return true;
-            }
-            
-            // Hide other players' boats when we're in salvage range
-            if (we.getOwnerType() == WorldEntity.OWNER_TYPE_OTHER_PLAYER && inSalvageRange) {
+        }
+        
+        // Hide NPCs during thieving distraction
+        if (config.enableThievingOverlay() && renderable instanceof NPC) {
+            NPC npc = (NPC) renderable;
+            if (thievingManager.shouldHideNpc(npc)) {
                 return false;
             }
         }
@@ -273,6 +288,11 @@ public class IdleMasterPlugin extends Plugin {
     public void onGameTick(GameTick event) {
         updateSalvageInfo();
         checkThresholdsAndPlaySounds();
+        
+        // Update thieving
+        if (config.enableThievingOverlay()) {
+            thievingManager.onGameTick();
+        }
     }
 
     @Subscribe
@@ -413,6 +433,11 @@ public class IdleMasterPlugin extends Plugin {
         if (event.getSkill() == Skill.SAILING) {
             updateSailingXp();
         }
+        
+        // Update thieving XP when it changes
+        if (event.getSkill() == Skill.THIEVING && config.enableThievingOverlay()) {
+            thievingManager.onStatChanged(event.getSkill());
+        }
     }
     
     @Subscribe
@@ -431,6 +456,16 @@ public class IdleMasterPlugin extends Plugin {
                 previousSalvageInfo = null;
                 SwingUtilities.invokeLater(() -> floatingWindow.updateConfig());
             }
+            
+            // Handle thieving config changes
+            if (event.getKey().equals("enableThievingOverlay")) {
+                if (config.enableThievingOverlay()) {
+                    thievingManager.startUp();
+                } else {
+                    thievingManager.shutDown();
+                }
+            }
+            thievingManager.onConfigChanged();
         }
     }
 

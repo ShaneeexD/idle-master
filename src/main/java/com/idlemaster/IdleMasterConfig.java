@@ -342,4 +342,122 @@ public interface IdleMasterConfig extends Config {
         position = 8
     )
     default boolean showOverlay() { return false; }
+
+    // ==================== THIEVING ====================
+    @ConfigSection(
+        name = "Thieving - Wealthy Citizens",
+        description = "Settings for Wealthy Citizens pickpocketing overlay.",
+        position = 100,
+        closedByDefault = true
+    )
+    String thievingSection = "thievingSection";
+
+    @ConfigItem(
+        keyName = "enableThievingOverlay",
+        name = "Enable Thieving Overlay",
+        description = "Show overlay when near Wealthy Citizens NPCs for pickpocketing.",
+        section = thievingSection,
+        position = 0
+    )
+    default boolean enableThievingOverlay() { return true; }
+
+    @ConfigItem(
+        keyName = "showThievingPlayerStatus",
+        name = "Show Player Status",
+        description = "Display whether player is actively pickpocketing.",
+        section = thievingSection,
+        position = 1
+    )
+    default boolean showThievingPlayerStatus() { return true; }
+
+    @ConfigItem(
+        keyName = "showThievingXpBar",
+        name = "Show XP Bar",
+        description = "Display thieving XP progress bar.",
+        section = thievingSection,
+        position = 2
+    )
+    default boolean showThievingXpBar() { return true; }
+
+    @ConfigItem(
+        keyName = "showThievingDistractionStatus",
+        name = "Show Distraction Status",
+        description = "Display whether a Wealthy Citizen is currently distracted.",
+        section = thievingSection,
+        position = 3
+    )
+    default boolean showThievingDistractionStatus() { return true; }
+
+    @ConfigItem(
+        keyName = "showThievingCoinPouches",
+        name = "Show Coin Pouches",
+        description = "Display coin pouch count (limit based on Ardougne diary).",
+        section = thievingSection,
+        position = 4
+    )
+    default boolean showThievingCoinPouches() { return true; }
+
+    @ConfigItem(
+        keyName = "playThievingDistractionStartSound",
+        name = "Sound: Distraction Start",
+        description = "Play a sound when a Wealthy Citizen becomes distracted.",
+        section = thievingSection,
+        position = 5
+    )
+    default boolean playThievingDistractionStartSound() { return true; }
+
+    @ConfigItem(
+        keyName = "playThievingDistractionEndSound",
+        name = "Sound: Distraction End",
+        description = "Play a sound when a Wealthy Citizen is no longer distracted.",
+        section = thievingSection,
+        position = 6
+    )
+    default boolean playThievingDistractionEndSound() { return true; }
+
+    @ConfigItem(
+        keyName = "playThievingPouchFullSound",
+        name = "Sound: Pouches Full",
+        description = "Play a sound when coin pouches reach the limit.",
+        section = thievingSection,
+        position = 7
+    )
+    default boolean playThievingPouchFullSound() { return true; }
+
+    @ConfigItem(
+        keyName = "playThievingIdleSound",
+        name = "Sound: Idle Alert",
+        description = "Play a sound when idle for too long while thieving.",
+        section = thievingSection,
+        position = 8
+    )
+    default boolean playThievingIdleSound() { return true; }
+
+    @ConfigItem(
+        keyName = "thievingIdleThreshold",
+        name = "Idle Threshold (seconds)",
+        description = "Seconds of inactivity before playing idle sound.",
+        section = thievingSection,
+        position = 9
+    )
+    @Range(min = 1, max = 60)
+    default int thievingIdleThreshold() { return 5; }
+
+    @ConfigItem(
+        keyName = "hideNpcsDuringDistraction",
+        name = "Hide NPCs During Distraction",
+        description = "Hide all NPCs except the distracted citizen when in thieving area.",
+        section = thievingSection,
+        position = 10
+    )
+    default boolean hideNpcsDuringDistraction() { return false; }
+
+    @ConfigItem(
+        keyName = "highlightDistractedCitizen",
+        name = "Highlight Distracted Citizen",
+        description = "Highlight the distracted wealthy citizen with a green outline.",
+        section = thievingSection,
+        position = 11
+    )
+    default boolean highlightDistractedCitizen() { return true; }
 }
